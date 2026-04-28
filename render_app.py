@@ -172,5 +172,12 @@ if __name__ == "__main__":
 
     import os
     port = int(os.environ.get("PORT", 7860))
-    demo.queue()
-    demo.launch(server_name="0.0.0.0", server_port=port, show_error=True)
+
+    print(f"🚀 Starting Render Frontend on port {port}...")
+    demo.queue() 
+    
+    demo.launch(
+        server_name="0.0.0.0", 
+        server_port=port,
+        show_error=True
+    )
