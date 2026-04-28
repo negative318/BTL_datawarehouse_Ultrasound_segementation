@@ -59,11 +59,13 @@ with gr.Blocks(title="Ultrasound AI - Cloud") as demo:
 
 if __name__ == "__main__":
     import os
-    # Get the port from Render's environment variable, default to 7860
     port = int(os.environ.get("PORT", 7860))
     
     print(f"🚀 Starting Render Frontend on port {port}...")
+    demo.queue() 
+    
     demo.launch(
         server_name="0.0.0.0", 
-        server_port=port
+        server_port=port,
+        show_error=True
     )
