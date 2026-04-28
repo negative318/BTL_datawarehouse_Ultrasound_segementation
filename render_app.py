@@ -5,7 +5,7 @@ import io
 from PIL import Image
 
 # LOCAL NGROK URL (Update this whenever you restart Ngrok on your local machine)
-LOCAL_API_URL = "https://a95c-2402-800-63af-dbed-ec0a-6883-2190-81d0.ngrok-free.app"
+LOCAL_API_URL = "https://8e07-2402-800-63af-dbed-ec0a-6883-2190-81d0.ngrok-free.app"
 
 def mask_to_rgb(mask_np):
     mask_np = np.array(mask_np)
