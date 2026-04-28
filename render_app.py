@@ -5,7 +5,7 @@ import io
 from PIL import Image
 
 # LOCAL NGROK URL (Update this whenever you restart Ngrok on your local machine)
-LOCAL_API_URL = "https://d06a-2402-800-63af-dbed-ec0a-688.ngrok-free.app"
+LOCAL_API_URL = "https://a95c-2402-800-63af-dbed-ec0a-6883-2190-81d0.ngrok-free.app"
 
 def mask_to_rgb(mask_np):
     mask_np = np.array(mask_np)
@@ -58,4 +58,12 @@ with gr.Blocks(title="Ultrasound AI - Cloud") as demo:
     btn.click(fn=predict_remote, inputs=[in_long, in_trans], outputs=[out_long, out_trans, out_cls])
 
 if __name__ == "__main__":
-    demo.launch()
+    import os
+    # Get the port from Render's environment variable, default to 7860
+    port = int(os.environ.get("PORT", 7860))
+    
+    print(f"🚀 Starting Render Frontend on port {port}...")
+    demo.launch(
+        server_name="0.0.0.0", 
+        server_port=port
+    )
