@@ -2,3 +2,5 @@ gradio
 requests
 numpy
 pillow
+pandas
+plotly
