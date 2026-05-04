@@ -117,11 +117,12 @@ with gr.Blocks(title="Ultrasound AI System") as demo:
                 with gr.Column():
                     gr.Markdown("### 📊 Dataset Statistics")
                     gr.Markdown(
-                        "- **Total Cases:** 1000 cases\n"
+                        "- **Total Cases:** 1500 paired cases\n"
                         "- **Data Modality:** Ultrasound (Longitudinal & Transverse views)\n"
-                        "- **Labeled Data:** 200 cases (20%)\n"
-                        "- **Unlabeled Data:** 800 cases (80%)\n"
-                        "- **Class Distribution:** Low Risk : High Risk ≈ 4 : 1 (Overall) / 1 : 1 (Labeled Subset)"
+                        "- **Training Set:** 1000 cases (10% manually annotated, 90% unannotated)\n"
+                        "- **Validation Set:** 200 cases\n"
+                        "- **Test Set:** 300 cases\n"
+                        "- **Risk Classification:** Low Risk (RADS 2) and High Risk (RADS 3-4)"
                     )
                 with gr.Column():
                     gr.Markdown("### 🏷️ Annotations & Guidelines")
