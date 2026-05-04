@@ -10,6 +10,9 @@ import os
 # API URL (Configurable via Environment Variable for Deployment)
 LOCAL_API_URL = os.environ.get("API_URL", "https://cicada-logical-virtually.ngrok-free.app")
 
+# Global variables for real-time evaluation tracking
+inference_stats = {"total": 0, "total_time": 0.0, "total_confidence": 0.0}
+
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
@@ -53,15 +56,27 @@ def predict_remote(long_img, trans_img):
         m_L = mask_to_rgb(mask_L_np)
         m_T = mask_to_rgb(mask_T_np)
 
+        inference_stats["total"] += 1
+        inference_stats["total_time"] += duration
+        inference_stats["total_confidence"] += certainty
+
         status_text = (
             f"🩺 Diagnosis: {diag_result}\n"
             f"🎯 Confidence: {certainty:.2f}%\n"
             f"⏱️ Time: {duration:.2f}s"
         )
 
-        return m_L, m_T, status_text
+        avg_time = inference_stats["total_time"] / inference_stats["total"]
+        avg_conf = inference_stats["total_confidence"] / inference_stats["total"]
+
+        return m_L, m_T, status_text, str(inference_stats["total"]), f"{avg_time:.2f}s", f"{avg_conf:.2f}%"
     except Exception as e:
-        return None, None, f"Connection error: {str(e)}"
+        total = inference_stats["total"]
+        if total == 0:
+            return None, None, f"Connection error: {str(e)}", "0", "0.0s", "0.0%"
+        avg_time = inference_stats["total_time"] / total
+        avg_conf = inference_stats["total_confidence"] / total
+        return None, None, f"Connection error: {str(e)}", str(total), f"{avg_time:.2f}s", f"{avg_conf:.2f}%"
 
 with gr.Blocks(title="Ultrasound AI System") as demo:
     gr.Markdown("# 🏥 Ultrasound AI System")
@@ -159,10 +174,22 @@ with gr.Blocks(title="Ultrasound AI System") as demo:
                     out_trans = gr.Image(label="Predicted Transverse Mask")
                     out_cls = gr.Textbox(label="Inference Metrics", lines=4)
 
-            btn.click(fn=predict_remote, inputs=[in_long, in_trans], outputs=[out_long, out_trans, out_cls])
-
-        with gr.TabItem("📈 Evaluation Metrics"):
+        with gr.TabItem("📈 Evaluation Metrics") as eval_tab:
             gr.Markdown("## 📈 System Evaluation Metrics")
+            
+            gr.Markdown("### 🚀 Real-time Inference Statistics")
+            gr.Markdown("Average metrics calculated from real user inferences during this session.")
+            
+            with gr.Row():
+                rt_total = gr.Textbox(label="Total Inferences", value="0", interactive=False)
+                rt_latency = gr.Textbox(label="Average Latency", value="0.0s", interactive=False)
+                rt_conf = gr.Textbox(label="Average Confidence", value="0.0%", interactive=False)
+            
+            # Update real-time stats automatically when inference is triggered
+            btn.click(fn=predict_remote, inputs=[in_long, in_trans], outputs=[out_long, out_trans, out_cls, rt_total, rt_latency, rt_conf])
+            
+            gr.Markdown("---")
+            gr.Markdown("### 📊 Benchmark Performance (Test Dataset)")
             gr.Markdown("Below are the benchmark results of the AI model on the test dataset (Simulated for Demo).")
             
             with gr.Row():
