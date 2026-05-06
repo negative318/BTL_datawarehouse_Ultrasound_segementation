@@ -3,6 +3,7 @@ import requests
 import numpy as np
 import io
 import time
+import json
 from PIL import Image
 import glob
 import os
@@ -10,8 +11,36 @@ import os
 # API URL (Configurable via Environment Variable for Deployment)
 LOCAL_API_URL = os.environ.get("API_URL", "https://cicada-logical-virtually.ngrok-free.app")
 
-# Global variables for real-time evaluation tracking
-inference_stats = {"total": 0, "total_time": 0.0, "total_confidence": 0.0}
+# Path to persist inference statistics across sessions
+STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "inference_stats.json")
+
+# ── Persistence helpers ──────────────────────────────────────────────────────
+
+def load_stats():
+    """Load inference stats from JSON file. Returns defaults if file missing."""
+    try:
+        with open(STATS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {
+            "total": int(data.get("total", 0)),
+            "total_time": float(data.get("total_time", 0.0)),
+            "total_confidence": float(data.get("total_confidence", 0.0)),
+        }
+    except Exception:
+        return {"total": 0, "total_time": 0.0, "total_confidence": 0.0}
+
+
+def save_stats(stats: dict):
+    """Persist inference stats to JSON file (fire-and-forget safe)."""
+    try:
+        with open(STATS_FILE, "w", encoding="utf-8") as f:
+            json.dump(stats, f, indent=2)
+    except Exception as e:
+        print(f"[WARN] Could not save stats: {e}")
+
+
+# Global variables for real-time evaluation tracking – load from disk on start
+inference_stats = load_stats()
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
@@ -59,6 +88,7 @@ def predict_remote(long_img, trans_img):
         inference_stats["total"] += 1
         inference_stats["total_time"] += duration
         inference_stats["total_confidence"] += certainty
+        save_stats(inference_stats)
 
         status_text = (
             f"🩺 Diagnosis: {diag_result}\n"
@@ -179,15 +209,50 @@ with gr.Blocks(title="Ultrasound AI System") as demo:
             gr.Markdown("## 📈 System Evaluation Metrics")
             
             gr.Markdown("### 🚀 Real-time Inference Statistics")
-            gr.Markdown("Average metrics calculated from real user inferences during this session.")
+            gr.Markdown(
+                "Cumulative metrics saved across all sessions. "
+                "Stats auto-refresh every **5 seconds** from disk."
+            )
             
             with gr.Row():
                 rt_total = gr.Textbox(label="Total Inferences", value="0", interactive=False)
                 rt_latency = gr.Textbox(label="Average Latency", value="0.0s", interactive=False)
                 rt_conf = gr.Textbox(label="Average Confidence", value="0.0%", interactive=False)
             
-            # Update real-time stats automatically when inference is triggered
-            btn.click(fn=predict_remote, inputs=[in_long, in_trans], outputs=[out_long, out_trans, out_cls, rt_total, rt_latency, rt_conf])
+            refresh_btn = gr.Button("🔄 Refresh Now", variant="secondary")
+            
+            # ── Shared refresh function ──────────────────────────────────────
+            def refresh_stats_from_file():
+                """Read inference_stats.json and return display values."""
+                s = load_stats()
+                total = s["total"]
+                if total == 0:
+                    return "0", "0.0s", "0.0%"
+                avg_time = s["total_time"] / total
+                avg_conf = s["total_confidence"] / total
+                return str(total), f"{avg_time:.2f}s", f"{avg_conf:.2f}%"
+            
+            # ── Auto-refresh via Timer (every 5 s, non-blocking) ─────────────
+            stats_timer = gr.Timer(value=5)
+            stats_timer.tick(
+                fn=refresh_stats_from_file,
+                inputs=[],
+                outputs=[rt_total, rt_latency, rt_conf],
+            )
+            
+            # ── Manual refresh button (instant) ─────────────────────────────
+            refresh_btn.click(
+                fn=refresh_stats_from_file,
+                inputs=[],
+                outputs=[rt_total, rt_latency, rt_conf],
+            )
+            
+            # ── Inference button updates the in-tab stats live ───────────────
+            btn.click(
+                fn=predict_remote,
+                inputs=[in_long, in_trans],
+                outputs=[out_long, out_trans, out_cls, rt_total, rt_latency, rt_conf],
+            )
             
             gr.Markdown("---")
             gr.Markdown("### 📊 Benchmark Performance (Test Dataset)")
